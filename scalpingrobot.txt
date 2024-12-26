@@ -178,7 +178,7 @@ void OnTick(){
                 if(ord.Symbol() == _Symbol && ord.Magic() == InpMagic) {
                     trade.OrderDelete(ord.Ticket());
                     // Entferne die Print-Anweisung und aktualisiere das Dashboard stattdessen
-                    TradingEnabledComm = "Pending Order gelöscht - Spread zu hoch";
+                    TradingEnabledComm = "Pending Order deleted - Spread too high";
                 }
             }
         }
