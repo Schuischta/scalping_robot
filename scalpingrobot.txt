@@ -129,6 +129,7 @@ COrderInfo        ord;
 
        input group "=== ADX Filter ==="
        
+             input bool            ADXFilterOn   = false; // Filter for ADX
              input int             ADX_Period    = 14;    // ADX Period
              input double          ADX_Threshold = 20;    // Below this value indicates ranging market
              input ENUM_TIMEFRAMES ADX_Timeframe = PERIOD_H1;  // Timeframe for ADX
@@ -276,6 +277,7 @@ void OnTick(){
     
     }
     
+    DisplayNextNews();
     DisplayDashboard();
 
    
@@ -582,6 +584,9 @@ bool IsSpreadTooHigh() {
 
 
 bool IsADXFilter() {
+
+    if(ADXFilterOn==false) return (false);
+    
     double ADX[];
     CopyBuffer(handleADX, 0, 0, 1, ADX);
     ArraySetAsSeries(ADX, true);
@@ -631,6 +636,57 @@ void DisplayDashboard() {
         dashboard += "Status: Trading is enabled\n";
     }
 
+    // Füge die nächste Nachricht hinzu
+    if (TrDisabledNews) {
+        // Korrigiere die Verwendung von TimeToStr
+        dashboard += "Next News: " + TimeToString(LastNewsAvoided, TIME_DATE | TIME_MINUTES) + "\n";
+    }
+
     // Zeige das Dashboard auf dem Chart an
     Comment(dashboard);
+}
+
+
+
+void DisplayNextNews() {
+    string sep;
+    switch(seperator){
+        case 0: sep = ","; break;
+        case 1: sep = ";"; break;
+    }
+    
+    sep_code = StringGetCharacter(sep, 0);
+    int k = StringSplit(KeyNews, sep_code, Newstoavoid);
+    
+    MqlCalendarValue values[];
+    datetime starttime = TimeCurrent();
+    datetime endtime = starttime + PeriodSeconds(PERIOD_D1) * DaysNewsLookup;
+    
+    CalendarValueHistory(values, starttime, endtime, NULL, NULL);
+    
+    for(int i = 0; i < ArraySize(values); i++){
+        MqlCalendarEvent event;
+        CalendarEventById(values[i].event_id, event);
+        MqlCalendarCountry country;
+        CalendarCountryById(event.country_id, country);
+        
+        if(StringFind(NewsCurrencies, country.currency) < 0) continue;
+        
+        for(int j = 0; j < k; j++){
+            string currentevent = Newstoavoid[j];
+            string currentnews = event.name;
+            if(StringFind(currentnews, currentevent) < 0) continue;
+            
+            if(values[i].time - TimeCurrent() < StopBeforeMin * PeriodSeconds(PERIOD_M1)){
+                LastNewsAvoided = values[i].time;
+                TrDisabledNews = true;
+                if(TradingEnabledComm == "" || TradingEnabledComm != "Printed"){
+                    TradingEnabledComm = "Trading is disabled due to upcoming news: " + event.name;
+                }
+                // Speichere den Namen des nächsten Ereignisses
+                TradingEnabledComm += " (" + currentnews + ")";
+                return;
+            }
+        }
+    }
 }
