@@ -175,31 +175,32 @@ void OnTick(){
     if(IsSpreadTooHigh()) {
         for(int i=OrdersTotal()-1; i>=0; i--) {
             if(ord.SelectByIndex(i)) {
-                if(ord.Symbol()==_Symbol && ord.Magic()==InpMagic) {
+                if(ord.Symbol() == _Symbol && ord.Magic() == InpMagic) {
                     trade.OrderDelete(ord.Ticket());
-                    Print("Pending Order gelöscht - Spread zu hoch: ", 
-                          SymbolInfoInteger(_Symbol, SYMBOL_SPREAD), " Points");
+                    // Entferne die Print-Anweisung und aktualisiere das Dashboard stattdessen
+                    TradingEnabledComm = "Pending Order gelöscht - Spread zu hoch";
                 }
             }
         }
+        DisplayDashboard();  // Dashboard aktualisieren
         return;
     }
    
-   if( IsRSIFilter() || IsUpcomingNews() || IsMAFilter() || IsADXFilter()){
-      CloseAllOrders();
-      Tradingenabled = false;
-      ChartSetInteger(0,CHART_COLOR_BACKGROUND,ChartColorTradingOff);
-      if(TradingEnabledComm!="Printed")
-         Print(TradingEnabledComm);
-      TradingEnabledComm = "Printed";
-      return; 
-   }
+   if(IsRSIFilter() || IsUpcomingNews() || IsMAFilter() || IsADXFilter()) {
+        CloseAllOrders();
+        Tradingenabled = false;
+        ChartSetInteger(0, CHART_COLOR_BACKGROUND, ChartColorTradingOff);
+        if(TradingEnabledComm != "Printed") {
+            TradingEnabledComm = "Trading is disabled due to one of the filters";
+        }
+        DisplayDashboard();  // Dashboard aktualisieren
+        return; 
+    }
    
    Tradingenabled = true;
-   if(TradingEnabledComm!=""){
-      Print("Trading is enabled again");
-      TradingEnabledComm = "";
-   }
+    if(TradingEnabledComm != ""){
+        TradingEnabledComm = "Trading is enabled again";
+    }
    
    ChartSetInteger(0,CHART_COLOR_BACKGROUND,ChartColorTradingOn);
 
@@ -274,6 +275,8 @@ void OnTick(){
       }
     
     }
+    
+    DisplayDashboard();
 
    
 }
@@ -593,4 +596,41 @@ bool IsADXFilter() {
         return true;
     }
     return false;
+}
+
+
+void DisplayDashboard() {
+    // Erstelle eine Zeichenkette, die die Indikatorwerte und Meldungen enthält
+    string dashboard = "";
+
+    // Füge den ADX-Wert hinzu
+    double ADX[];
+    CopyBuffer(handleADX, 0, 0, 1, ADX);
+    ArraySetAsSeries(ADX, true);
+    double ADXnow = ADX[0];
+    dashboard += "ADX: " + DoubleToString(ADXnow, 2) + "\n";
+
+    // Füge den RSI-Wert hinzu
+    double RSI[];
+    CopyBuffer(handleRSI, 0, 0, 1, RSI);
+    ArraySetAsSeries(RSI, true);
+    double RSInow = RSI[0];
+    dashboard += "RSI: " + DoubleToString(RSInow, 2) + "\n";
+
+    // Füge den Moving Average Wert hinzu
+    double MovAvg[];
+    CopyBuffer(handleMovAvg, 0, 0, 1, MovAvg);
+    ArraySetAsSeries(MovAvg, true);
+    double MAnow = MovAvg[0];
+    dashboard += "Moving Average: " + DoubleToString(MAnow, 2) + "\n";
+
+    // Füge die Handelsmeldungen hinzu
+    if (TradingEnabledComm != "") {
+        dashboard += "Status: " + TradingEnabledComm + "\n";
+    } else {
+        dashboard += "Status: Trading is enabled\n";
+    }
+
+    // Zeige das Dashboard auf dem Chart an
+    Comment(dashboard);
 }
