@@ -134,6 +134,23 @@ COrderInfo        ord;
              input double          ADX_Threshold = 20;    // Below this value indicates ranging market
              input ENUM_TIMEFRAMES ADX_Timeframe = PERIOD_H1;  // Timeframe for ADX
              int handleADX;
+             
+             
+       // Dashboard Farben und Variablen
+            color COLOR_ACTIVE = clrLimeGreen;
+            color COLOR_INACTIVE = clrRed;
+            color COLOR_WARNING = clrOrange;
+            color COLOR_NORMAL = clrWhite;
+            color COLOR_PROFIT = clrLimeGreen;
+            color COLOR_LOSS = clrRed;
+
+       // Status Messages für Dashboard
+            string LastNewsMessage = "";
+            string LastTradeMessage = "";
+            string LastErrorMessage = "";
+            datetime LastMessageTime = 0;
+
+
 
 int OnInit(){
 
@@ -169,6 +186,8 @@ void OnDeinit(const int reason){
 
 
 void OnTick(){
+
+   UpdateDashboard();
 
    TrailStop();
    
@@ -594,4 +613,142 @@ bool IsADXFilter() {
         return true;
     }
     return false;
+}
+
+
+
+//+------------------------------------------------------------------+
+//| Dashboard-Funktionen                                               |
+//+------------------------------------------------------------------+
+void UpdateDashboard()
+{
+    string dashboard = createHeader();
+    dashboard += createSystemStatus();
+    dashboard += createFilterStatus();
+    dashboard += createTradeInfo();
+    dashboard += createAccountInfo();
+    dashboard += createMessages();
+    
+    Comment(dashboard);
+}
+
+string createHeader()
+{
+    string header = "\n";
+    header += "════════════════════════════════════════════\n";
+    header += "             SCALPING ROBOT 2.0              \n";
+    header += "════════════════════════════════════════════\n\n";
+    return header;
+}
+
+string createSystemStatus()
+{
+    string status = "⚙️ SYSTEM STATUS\n";
+    status += "--------------------------------\n";
+    status += "Trading System: " + getProfileName() + "\n";
+    status += "Status: " + (Tradingenabled ? "✅ AKTIV" : "❌ INAKTIV") + "\n";
+    status += "Timeframe: " + EnumToString(Timeframe) + "\n\n";
+    return status;
+}
+
+string createFilterStatus()
+{
+    string filters = "🔍 FILTER STATUS\n";
+    filters += "--------------------------------\n";
+    filters += "Spread: " + (IsSpreadTooHigh() ? "⛔ HOCH" : "✅ OK") + 
+               " (" + SymbolInfoInteger(_Symbol, SYMBOL_SPREAD) + " Punkte)\n";
+    
+    if(NewsFilterOn)
+        filters += "News: " + (IsUpcomingNews() ? "⚠️ ERWARTET" : "✅ OK") + "\n";
+    
+    if(RSIFilterOn)
+        filters += "RSI: " + (IsRSIFilter() ? "⛔ AUSSERHALB" : "✅ OK") + "\n";
+    
+    if(MAFilterOn)
+        filters += "MA: " + (IsMAFilter() ? "⛔ EXTREM" : "✅ OK") + "\n";
+        
+    if(ADX_Threshold > 0)
+        filters += "ADX: " + (IsADXFilter() ? "⛔ RANGING" : "✅ TRENDING") + "\n";
+    
+    filters += "\n";
+    return filters;
+}
+
+string createTradeInfo()
+{
+    int buyTotal = 0, sellTotal = 0;
+    CountOpenPositions(buyTotal, sellTotal);
+    
+    string trades = "📊 TRADE INFORMATION\n";
+    trades += "--------------------------------\n";
+    trades += "Offene Long: " + IntegerToString(buyTotal) + "\n";
+    trades += "Offene Short: " + IntegerToString(sellTotal) + "\n";
+    
+    // Aktuelle Trade-Parameter
+    trades += "Risk pro Trade: " + DoubleToString(RiskPercent, 1) + "%\n";
+    trades += "Take Profit: " + DoubleToString(Tppoints, 1) + " Punkte\n";
+    trades += "Stop Loss: " + DoubleToString(Slpoints, 1) + " Punkte\n";
+    trades += "TSL Trigger: " + DoubleToString(TslTriggerPoints, 1) + " Punkte\n\n";
+    
+    return trades;
+}
+
+string createAccountInfo()
+{
+    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+    double profit = equity - balance;
+    
+    string account = "💰 KONTO INFORMATION\n";
+    account += "--------------------------------\n";
+    account += "Balance: " + DoubleToString(balance, 2) + " " + AccountInfoString(ACCOUNT_CURRENCY) + "\n";
+    account += "Equity: " + DoubleToString(equity, 2) + " " + AccountInfoString(ACCOUNT_CURRENCY) + "\n";
+    account += "Floating P/L: " + DoubleToString(profit, 2) + " " + AccountInfoString(ACCOUNT_CURRENCY) + "\n\n";
+    
+    return account;
+}
+
+string createMessages()
+{
+    string messages = "📌 LETZTE MELDUNGEN\n";
+    messages += "--------------------------------\n";
+    
+    if(LastNewsMessage != "")
+        messages += "News: " + LastNewsMessage + "\n";
+    if(LastTradeMessage != "")
+        messages += "Trade: " + LastTradeMessage + "\n";
+    if(LastErrorMessage != "")
+        messages += "⚠️ " + LastErrorMessage + "\n";
+    
+    return messages;
+}
+
+string getProfileName()
+{
+    switch(SysChoice)
+    {
+        case 0: return "Forex";
+        case 1: return "Bitcoin";
+        case 2: return "Gold";
+        case 3: return "US Indices";
+        default: return "Unknown";
+    }
+}
+
+void LogTradeMessage(string message)
+{
+    LastTradeMessage = TimeToString(TimeCurrent(), TIME_MINUTES) + ": " + message;
+    LastMessageTime = TimeCurrent();
+}
+
+void LogNewsMessage(string message)
+{
+    LastNewsMessage = TimeToString(TimeCurrent(), TIME_MINUTES) + ": " + message;
+    LastMessageTime = TimeCurrent();
+}
+
+void LogErrorMessage(string message)
+{
+    LastErrorMessage = TimeToString(TimeCurrent(), TIME_MINUTES) + ": " + message;
+    LastMessageTime = TimeCurrent();
 }
