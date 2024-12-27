@@ -129,6 +129,7 @@ COrderInfo        ord;
 
        input group "=== ADX Filter ==="
        
+             input bool            ADXFilterOn   = false; // Filter for ADX
              input int             ADX_Period    = 14;    // ADX Period
              input double          ADX_Threshold = 20;    // Below this value indicates ranging market
              input ENUM_TIMEFRAMES ADX_Timeframe = PERIOD_H1;  // Timeframe for ADX
@@ -175,31 +176,29 @@ void OnTick(){
     if(IsSpreadTooHigh()) {
         for(int i=OrdersTotal()-1; i>=0; i--) {
             if(ord.SelectByIndex(i)) {
-                if(ord.Symbol()==_Symbol && ord.Magic()==InpMagic) {
+                if(ord.Symbol() == _Symbol && ord.Magic() == InpMagic) {
                     trade.OrderDelete(ord.Ticket());
-                    Print("Pending Order gelöscht - Spread zu hoch: ", 
-                          SymbolInfoInteger(_Symbol, SYMBOL_SPREAD), " Points");
+                    // Entferne die Print-Anweisung und aktualisiere das Dashboard stattdessen
+                    TradingEnabledComm = "Pending Order deleted - Spread too high";
                 }
             }
         }
-        return;
     }
    
-   if( IsRSIFilter() || IsUpcomingNews() || IsMAFilter() || IsADXFilter()){
-      CloseAllOrders();
-      Tradingenabled = false;
-      ChartSetInteger(0,CHART_COLOR_BACKGROUND,ChartColorTradingOff);
-      if(TradingEnabledComm!="Printed")
-         Print(TradingEnabledComm);
-      TradingEnabledComm = "Printed";
-      return; 
-   }
+   if(IsRSIFilter() || IsUpcomingNews() || IsMAFilter() || IsADXFilter()) {
+        CloseAllOrders();
+        Tradingenabled = false;
+        ChartSetInteger(0, CHART_COLOR_BACKGROUND, ChartColorTradingOff);
+        if(TradingEnabledComm != "Printed") {
+            TradingEnabledComm = "Trading is disabled due to one of the filters";
+        }
+        return; 
+    }
    
    Tradingenabled = true;
-   if(TradingEnabledComm!=""){
-      Print("Trading is enabled again");
-      TradingEnabledComm = "";
-   }
+    if(TradingEnabledComm != ""){
+        TradingEnabledComm = "Trading is enabled again";
+    }
    
    ChartSetInteger(0,CHART_COLOR_BACKGROUND,ChartColorTradingOn);
 
@@ -274,8 +273,7 @@ void OnTick(){
       }
     
     }
-
-   
+    
 }
 
   
@@ -579,6 +577,9 @@ bool IsSpreadTooHigh() {
 
 
 bool IsADXFilter() {
+
+    if(ADXFilterOn==false) return (false);
+    
     double ADX[];
     CopyBuffer(handleADX, 0, 0, 1, ADX);
     ArraySetAsSeries(ADX, true);
