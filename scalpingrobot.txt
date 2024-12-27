@@ -174,6 +174,8 @@ int OnInit(){
    handleRSI = iRSI(_Symbol,RSITimeframe,RSI_MA,RSI_AppPrice);
    handleMovAvg = iMA(_Symbol,MATimeframe,MA_Period,0,MA_Mode,MA_AppPrice);
    handleADX = iADX(_Symbol, ADX_Timeframe, ADX_Period);
+   
+   UpdateDashboard();
 
    return(INIT_SUCCEEDED);
 }
@@ -197,8 +199,7 @@ void OnTick(){
             if(ord.SelectByIndex(i)) {
                 if(ord.Symbol() == _Symbol && ord.Magic() == InpMagic) {
                     trade.OrderDelete(ord.Ticket());
-                    // Entferne die Print-Anweisung und aktualisiere das Dashboard stattdessen
-                    TradingEnabledComm = "Pending Order deleted - Spread too high";
+                    
                 }
             }
         }
@@ -751,4 +752,36 @@ void LogErrorMessage(string message)
 {
     LastErrorMessage = TimeToString(TimeCurrent(), TIME_MINUTES) + ": " + message;
     LastMessageTime = TimeCurrent();
+}
+
+
+
+void CountOpenPositions(int &buyTotal, int &sellTotal)
+{
+   buyTotal = 0;
+   sellTotal = 0;
+   
+   for (int i=PositionsTotal()-1; i>=0; i--)
+   {
+      if(pos.SelectByIndex(i))
+      {
+         if(pos.Magic()==InpMagic && pos.Symbol()==_Symbol)
+         {
+            if(pos.PositionType()==POSITION_TYPE_BUY) buyTotal++;
+            if(pos.PositionType()==POSITION_TYPE_SELL) sellTotal++;
+         }
+      }
+   }
+   
+   for (int i=OrdersTotal()-1; i>=0; i--)
+   {
+      if(ord.SelectByIndex(i))
+      {
+         if(ord.Magic()==InpMagic && ord.Symbol()==_Symbol)
+         {
+            if(ord.OrderType()==ORDER_TYPE_BUY_STOP) buyTotal++;
+            if(ord.OrderType()==ORDER_TYPE_SELL_STOP) sellTotal++;
+         }
+      }
+   }
 }
